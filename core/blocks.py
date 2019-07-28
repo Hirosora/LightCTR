@@ -196,12 +196,16 @@ class CrossNetwork(tf.keras.Model):
     def __init__(self,
                  kernel_initializer='glorot_uniform',
                  kernel_regularizer=tf.keras.regularizers.l2(1e-5),
+                 bias_initializer='zeros',
+                 bias_regularizer=None,
                  **kwargs):
 
         super(CrossNetwork, self).__init__(**kwargs)
 
         self.kernel_initializer = kernel_initializer
         self.kernel_regularizer = kernel_regularizer
+        self.bias_initializer = bias_initializer
+        self.bias_regularizer = bias_regularizer
 
     def call(self, inputs, layers_num=3, require_logit=True, **kwargs):
 
@@ -214,8 +218,8 @@ class CrossNetwork(tf.keras.Model):
                                      regularizer=self.kernel_regularizer,
                                      trainable=True)
             bias = self.add_weight(shape=(x0.shape[1], 1),
-                                   initializer=self.kernel_initializer,
-                                   regularizer=self.kernel_regularizer,
+                                   initializer=self.bias_initializer,
+                                   regularizer=self.bias_regularizer,
                                    trainable=True)
             x = tf.matmul(tf.matmul(x0, x), kernel) + bias + tf.transpose(x, [0, 2, 1])
             x = tf.transpose(x, [0, 2, 1])
@@ -229,3 +233,55 @@ class CrossNetwork(tf.keras.Model):
             x = tf.matmul(x, kernel)
 
         return x
+
+
+class CIN(tf.keras.Model):
+
+    def __init__(self,
+                 kernel_initializer='glorot_uniform',
+                 kernel_regularizer=tf.keras.regularizers.l2(1e-5),
+                 **kwargs):
+
+        super(CIN, self).__init__(**kwargs)
+
+        self.kernel_initializer = kernel_initializer
+        self.kernel_regularizer = kernel_regularizer
+
+    def call(self, inputs, hidden_width=(128, 64), require_logit=True, **kwargs):
+
+        # [b, n, m]
+        x0 = tf.stack(inputs, axis=1)
+        x = tf.identity(x0)
+
+        hidden_width = [x0.shape[1]] + list(hidden_width)
+
+        finals = list()
+        for h in hidden_width:
+            rows = list()
+            cols = list()
+            for i in range(x0.shape[1]):
+                for j in range(x.shape[1]):
+                    rows.append(i)
+                    cols.append(j)
+            # [b, pair, m]
+            x0_ = tf.gather(x0, rows, axis=1)
+            x_ = tf.gather(x, cols, axis=1)
+            # [b, m, pair]
+            p = tf.transpose(tf.multiply(x0_, x_), [0, 2, 1])
+
+            kernel = self.add_weight(shape=(p.shape[-1], h),
+                                     initializer=self.kernel_initializer,
+                                     regularizer=self.kernel_regularizer,
+                                     trainable=True)
+            # [b, h, m]
+            x = tf.transpose(tf.matmul(p, kernel), [0, 2, 1])
+            finals.append(tf.reduce_sum(x, axis=-1, keepdims=False))
+
+        finals = tf.concat(finals, axis=-1)
+        kernel = self.add_weight(shape=(finals.shape[-1], 1),
+                                 initializer=self.kernel_initializer,
+                                 regularizer=self.kernel_regularizer,
+                                 trainable=True)
+        logit = tf.matmul(finals, kernel)
+
+        return logit

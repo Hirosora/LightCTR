@@ -8,6 +8,8 @@ def DCN(
         feature_metas,
         cross_kernel_initializer='glorot_uniform',
         cross_kernel_regularizer=tf.keras.regularizers.l2(1e-5),
+        cross_bias_initializer='zeros',
+        cross_bias_regularizer=None,
         cross_layers_num=3,
         embedding_initializer='glorot_uniform',
         embedding_regularizer=tf.keras.regularizers.l2(1e-5),
@@ -21,7 +23,7 @@ def DCN(
         dnn_bias_initializers='zeros',
         dnn_kernel_regularizers=tf.keras.regularizers.l2(1e-5),
         dnn_bias_regularizers=None,
-        name='Deep&Crossing Network'):
+        name='Deep&Cross Network'):
 
     assert isinstance(feature_metas, FeatureMetas)
 
@@ -59,7 +61,9 @@ def DCN(
         cross_inputs = list(embedded_dict.values())
         cross_output = CrossNetwork(
             kernel_initializer=cross_kernel_initializer,
-            kernel_regularizer=cross_kernel_regularizer
+            kernel_regularizer=cross_kernel_regularizer,
+            bias_initializer=cross_bias_initializer,
+            bias_regularizer=cross_bias_regularizer
         )(cross_inputs, layers_num=cross_layers_num, require_logit=True)
 
         output = tf.keras.activations.sigmoid(deep_output + cross_output)
