@@ -1,6 +1,4 @@
 from collections import Iterable
-import sys
-
 
 import tensorflow as tf
 from tensorflow.python.keras import layers
@@ -185,9 +183,49 @@ class OuterProduct(tf.keras.Model):
                                          initializer=self.kernel_initializer,
                                          regularizer=self.kernel_regularizer,
                                          trainable=True)
-                product = tf.reduce_sum(tf.matmul(tf.matmul(inp_i, kernel), inp_j), axis=-1)
+                product = tf.reduce_sum(tf.matmul(tf.matmul(inp_i, kernel), inp_j), axis=-1, keepdims=False)
                 outer_products_list.append(product)
 
         outer_product_layer = tf.concat(outer_products_list, axis=1)
 
         return outer_product_layer
+
+
+class CrossNetwork(tf.keras.Model):
+
+    def __init__(self,
+                 kernel_initializer='glorot_uniform',
+                 kernel_regularizer=tf.keras.regularizers.l2(1e-5),
+                 **kwargs):
+
+        super(CrossNetwork, self).__init__(**kwargs)
+
+        self.kernel_initializer = kernel_initializer
+        self.kernel_regularizer = kernel_regularizer
+
+    def call(self, inputs, layers_num=3, require_logit=True, **kwargs):
+
+        x0 = tf.expand_dims(tf.concat(inputs, axis=1), axis=-1)
+        x = tf.transpose(x0, [0, 2, 1])
+
+        for i in range(layers_num):
+            kernel = self.add_weight(shape=(x0.shape[1], 1),
+                                     initializer=self.kernel_initializer,
+                                     regularizer=self.kernel_regularizer,
+                                     trainable=True)
+            bias = self.add_weight(shape=(x0.shape[1], 1),
+                                   initializer=self.kernel_initializer,
+                                   regularizer=self.kernel_regularizer,
+                                   trainable=True)
+            x = tf.matmul(tf.matmul(x0, x), kernel) + bias + tf.transpose(x, [0, 2, 1])
+            x = tf.transpose(x, [0, 2, 1])
+
+        x = tf.squeeze(x, axis=1)
+        if require_logit:
+            kernel = self.add_weight(shape=(x0.shape[1], 1),
+                                     initializer=self.kernel_initializer,
+                                     regularizer=self.kernel_regularizer,
+                                     trainable=True)
+            x = tf.matmul(x, kernel)
+
+        return x

@@ -23,7 +23,7 @@ def WideAndDeep(
         deep_bias_initializers='zeros',
         deep_kernel_regularizers=tf.keras.regularizers.l2(1e-5),
         deep_bias_regularizers=None,
-        name='WideAndDeep'):
+        name='Wide&Deep'):
 
     assert isinstance(feature_metas, FeatureMetas)
 
