@@ -1,0 +1,8 @@
+.idea
+.DS_Store
+*.ipynb
+*ipynb*
+datasets
+tmp
+test
+__pychache__
