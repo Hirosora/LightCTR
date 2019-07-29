@@ -348,3 +348,50 @@ class AttentionBasedPoolingLayer(tf.keras.Model):
         output = tf.reduce_sum(interactions * att_weight, axis=1)
 
         return output
+
+
+class AutoIntInteraction(tf.keras.Model):
+
+    def __init__(self, att_embedding_size=8, heads=2, use_res=True, seed=2333, **kwargs):
+
+        super(AutoIntInteraction, self).__init__(**kwargs)
+
+        self.att_embedding_size = att_embedding_size
+        self.heads = heads
+        self.use_res = use_res
+        self.seed = seed
+
+    def call(self, inputs, **kwargs):
+
+        m = inputs.shape[-1]
+
+        W_Query = self.add_weight(shape=[m, self.att_embedding_size * self.heads],
+                                  initializer=tf.keras.initializers.RandomNormal(seed=self.seed))
+        W_key = self.add_weight(shape=[m, self.att_embedding_size * self.heads],
+                                initializer=tf.keras.initializers.RandomNormal(seed=self.seed))
+        W_Value = self.add_weight(shape=[m, self.att_embedding_size * self.heads],
+                                  initializer=tf.keras.initializers.RandomNormal(seed=self.seed))
+
+        queries = tf.matmul(inputs, W_Query)
+        keys = tf.matmul(inputs, W_key)
+        values = tf.matmul(inputs, W_Value)
+
+        queries = tf.stack(tf.split(queries, self.heads, axis=2))
+        keys = tf.stack(tf.split(keys, self.heads, axis=2))
+        values = tf.stack(tf.split(values, self.heads, axis=2))
+
+        att_score = tf.matmul(queries, keys, transpose_b=True)
+        att_score = layers.Softmax(axis=-1)(att_score)
+
+        result = tf.matmul(att_score, values)
+        result = tf.concat(tf.split(result, self.heads), axis=-1)
+        result = tf.squeeze(result, axis=0)
+
+        if self.use_res:
+            W_Res = self.add_weight(shape=[m, self.att_embedding_size * self.heads],
+                                    initializer=tf.keras.initializers.RandomNormal(seed=self.seed))
+            result = result + tf.matmul(inputs, W_Res)
+
+        result = tf.keras.activations.relu(result)
+
+        return result
