@@ -23,7 +23,7 @@ def DCN(
         dnn_bias_initializers='zeros',
         dnn_kernel_regularizers=tf.keras.regularizers.l2(1e-5),
         dnn_bias_regularizers=None,
-        name='Deep&Cross Network'):
+        name='Deep&CrossNetwork'):
 
     assert isinstance(feature_metas, FeatureMetas)
 

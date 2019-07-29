@@ -120,22 +120,27 @@ class FM(tf.keras.Model):
 
         super(FM, self).__init__(**kwargs)
 
-    def call(self, inputs, **kwargs):
+    def call(self, inputs, require_logit=True, **kwargs):
         """
         :param inputs:
-            list of 2D tensor with shape [batch_size, number_of_features, embedding_size]
+            list of 2D tensor with shape [batch_size, embedding_size]
             all the features should be embedded and have the same embedding size
         :return:
             2D tensor with shape [batch_size, 1]
             sum of all cross features
         """
 
+        # [b, n, m]
         inputs_3d = tf.stack(inputs, axis=1)
 
+        # [b, m]
         # (a + b) ^ 2 - (a ^ 2 + b ^ 2) = 2 * ab, we need the cross feature "ab"
         square_of_sum = tf.square(tf.reduce_sum(inputs_3d, axis=1, keepdims=False))
         sum_of_square = tf.reduce_sum(tf.square(inputs_3d), axis=1, keepdims=False)
-        outputs = 0.5 * tf.reduce_sum(square_of_sum - sum_of_square, axis=1, keepdims=True)
+        if require_logit:
+            outputs = 0.5 * tf.reduce_sum(square_of_sum - sum_of_square, axis=1, keepdims=True)
+        else:
+            outputs = 0.5 * (square_of_sum - sum_of_square)
 
         return outputs
 

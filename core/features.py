@@ -354,6 +354,8 @@ class Features(object):
 
         slots_filter = list(filter(lambda slot_name: slot_name in self.sparse_feats_slots, slots_filter))
 
+        embedded_dict = dict()
+
         if fixed_embedding_dim is not None:
             group_name = group_name + '_' + str(fixed_embedding_dim)
 
@@ -361,8 +363,6 @@ class Features(object):
         if group_name not in self.embedded_groups:
             self.embedded_groups[group_name] = dict()
         group = self.embedded_groups[group_name]
-
-        embedded_dict = dict()
 
         # if the slot is not in this group, make a new embedding for it.
         for slot_name in slots_filter:
