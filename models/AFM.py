@@ -1,14 +1,13 @@
 import tensorflow as tf
 
 from core.features import FeatureMetas, Features, group_embedded_by_dim
-from core.blocks import DNN, FM
+from core.blocks import DNN, AttentionBasedPoolingLayer
 
 
-def DeepFM(
+def AFM(
         feature_metas,
         linear_slots,
         fm_slots,
-        dnn_slots,
         embedding_initializer='glorot_uniform',
         embedding_regularizer=tf.keras.regularizers.l2(1e-5),
         fm_fixed_embedding_dim=None,
@@ -24,7 +23,7 @@ def DeepFM(
         dnn_bias_initializers='zeros',
         dnn_kernel_regularizers=tf.keras.regularizers.l2(1e-5),
         dnn_bias_regularizers=None,
-        name='DeepFM'):
+        name='AFM'):
 
     assert isinstance(feature_metas, FeatureMetas)
 
@@ -40,24 +39,17 @@ def DeepFM(
                                                       embedding_group='dot_embedding',
                                                       slots_filter=linear_slots)
 
-        # FM Part
-        with tf.name_scope('FM'):
+        # Interaction
+        with tf.name_scope('Interaction'):
             fm_embedded_dict = features.get_embedded_dict(group_name='embedding',
                                                           fixed_embedding_dim=fm_fixed_embedding_dim,
                                                           embedding_initializer=embedding_initializer,
                                                           embedding_regularizer=embedding_regularizer,
                                                           slots_filter=fm_slots)
             fm_dim_groups = group_embedded_by_dim(fm_embedded_dict)
-            fms = [FM()(group) for group in fm_dim_groups.values() if len(group) > 1]
-            fm_output = tf.add_n(fms)
-
-        # DNN Part
-        with tf.name_scope('DNN'):
-            dnn_inputs = features.gen_concated_feature(embedding_group='embedding',
-                                                       fixed_embedding_dim=fm_fixed_embedding_dim,
-                                                       embedding_initializer=embedding_initializer,
-                                                       embedding_regularizer=embedding_regularizer,
-                                                       slots_filter=dnn_slots)
+            fms = [AttentionBasedPoolingLayer()(group)
+                   for group in fm_dim_groups.values() if len(group) > 1]
+            dnn_inputs = tf.concat(fms, axis=1)
             dnn_output = DNN(
                 units=dnn_hidden_units,
                 use_bias=dnn_use_bias,
@@ -71,7 +63,7 @@ def DeepFM(
             )(dnn_inputs)
 
         # Output
-        output = tf.add_n([linear_output, fm_output, dnn_output])
+        output = tf.add_n([linear_output, dnn_output])
         output = tf.keras.activations.sigmoid(output)
 
         model = tf.keras.Model(inputs=features.get_inputs_list(), outputs=output)

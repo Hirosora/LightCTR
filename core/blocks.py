@@ -3,6 +3,12 @@ from collections import Iterable
 import tensorflow as tf
 from tensorflow.python.keras import layers
 
+from tensorflow.python.keras.initializers import (Zeros, glorot_normal,
+                                                  glorot_uniform)
+from tensorflow.python.keras.regularizers import l2
+from tensorflow.python.keras import backend as K
+import itertools
+
 
 def get_activation(activation):
     if activation is None:
@@ -151,7 +157,7 @@ class InnerProduct(tf.keras.Model):
 
         super(InnerProduct, self).__init__(**kwargs)
 
-    def call(self, inputs, **kwargs):
+    def call(self, inputs, concat=True, **kwargs):
 
         inner_products_list = list()
 
@@ -290,3 +296,55 @@ class CIN(tf.keras.Model):
         logit = tf.matmul(finals, kernel)
 
         return logit
+
+
+class AttentionBasedPoolingLayer(tf.keras.Model):
+
+    def __init__(self,
+                 attention_factor=4,
+                 kernel_initializer='glorot_uniform',
+                 kernel_regularizer=tf.keras.regularizers.l2(1e-5),
+                 bias_initializer='zeros',
+                 bias_regularizer=None,
+                 **kwargs):
+
+        super(AttentionBasedPoolingLayer, self).__init__(**kwargs)
+
+        self.attention_factor = attention_factor
+        self.kernel_initializer = kernel_initializer
+        self.kernel_regularizer = kernel_regularizer
+        self.bias_initializer = bias_initializer
+        self.bias_regularizer = bias_regularizer
+
+        self.att_layer = layers.Dense(
+            units=self.attention_factor,
+            activation='relu',
+            use_bias=True,
+            kernel_initializer=self.kernel_initializer,
+            kernel_regularizer=self.kernel_regularizer,
+            bias_initializer=self.bias_initializer,
+            bias_regularizer=self.bias_regularizer
+        )
+        self.att_proj_layer = layers.Dense(
+            units=1,
+            activation=None,
+            use_bias=False,
+            kernel_initializer=self.kernel_initializer
+        )
+
+    def call(self, inputs, **kwargs):
+
+        interactions = list()
+
+        for i in range(len(inputs) - 1):
+            for j in range(i + 1, len(inputs)):
+                interactions.append(tf.multiply(inputs[i], inputs[j]))
+
+        interactions = tf.stack(interactions, axis=1)
+        att_weight = self.att_layer(interactions)
+        att_weight = self.att_proj_layer(att_weight)
+
+        att_weight = layers.Softmax(axis=1)(att_weight)
+        output = tf.reduce_sum(interactions * att_weight, axis=1)
+
+        return output
