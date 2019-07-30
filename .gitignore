@@ -2,7 +2,9 @@
 .DS_Store
 *.ipynb
 *ipynb*
-datasets
+criteo_sample.txt
+movielens_sample.txt
+avazu-ctr-prediction
 tmp
 test
 __pychache__
