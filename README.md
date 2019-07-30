@@ -1,5 +1,14 @@
 # LightCTR
 
+LightCTR is a tensorflow 2.0 based, extensible toolbox for building CTR/CVR predicting models. 
+It provides several off-the-shelf popular CTR models for you to use. And it also contains some useful
+model blocks to help you build your own model quickly.
+
+Have a quick start with the example script `./examples/ctr_predict.py`
+
+A small example dataset `avazu_1w.txt` is provided in `./datasets`, It is sampled from a [kaggle
+dataset](https://www.kaggle.com/c/avazu-ctr-prediction) with 10000 rows.
+
 ## Models List
 
 |                    Model                     | Paper   |
