@@ -81,8 +81,8 @@ def group_embedded_by_dim(embedded_dict):
     """
     Group a embedded features' dict according to embedding dimension.
 
-    :param embedded_dict: Dict of embedded sparse features {name: 3D_embedded_feature}
-    :return: Dict of grouped embedded features {embedding_dim: [3D_embedded_features]}
+    :param embedded_dict: Dict of embedded sparse features {name: embedded_feature}
+    :return: Dict of grouped embedded features {embedding_dim: [embedded_features]}
     """
 
     groups = dict()

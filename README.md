@@ -25,3 +25,5 @@ dataset](https://www.kaggle.com/c/avazu-ctr-prediction) with 10000 rows.
 |  Convolutional Click Prediction Model (CCPM) | [CIKM 2015][A Convolutional Click Prediction Model](http://ir.ia.ac.cn/bitstream/173211/12337/1/A%20Convolutional%20Click%20Prediction%20Model.pdf)                    |
 | Feature Generation by Convolutional Neural Network (FGCNN) | [WWW 2019][Feature Generation by Convolutional Neural Network for Click-Through Rate Prediction ](https://arxiv.org/pdf/1904.04447)   |
 |       Mixed Logistic Regression (MLR)        | [arxiv 2017][Learning Piece-wise Linear Models from Large Scale Data for Ad Click Prediction](https://arxiv.org/pdf/1704.05194.pdf) |
+|                     FiBiNET                  | [RecSys 2019][FiBiNET: Combining Feature Importance and Bilinear feature Interaction for Click-Through Rate Prediction](https://arxiv.org/pdf/1905.09433.pdf)   |
+|                     NFFM                     | [arxiv 2019][Operation-aware Neural Networks for User Response Prediction](https://arxiv.org/pdf/1904.12579.pdf)                                                           |

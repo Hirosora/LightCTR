@@ -1,4 +1,5 @@
 from collections import Iterable
+import itertools
 
 import tensorflow as tf
 from tensorflow.python.keras import layers
@@ -423,3 +424,90 @@ class FGCNNlayer(tf.keras.layers.Layer):
                                      shape=(-1, output.shape[1] * self.new_feat_filters, output.shape[2]))
 
         return output, new_feat_output
+
+
+class BiInteraction(tf.keras.Model):
+
+    def __init__(self, mode='all', **kwargs):
+
+        super(BiInteraction, self).__init__(**kwargs)
+
+        self.mode = mode
+
+    def call(self, inputs, **kwargs):
+
+        output = list()
+        embedding_size = inputs[0].shape[-1]
+
+        if self.mode == 'all':
+            W = self.add_weight(
+                shape=(embedding_size, embedding_size),
+                initializer='glorot_uniform',
+                regularizer=tf.keras.regularizers.l2(1e-5),
+                trainable=True
+            )
+            for i in range(len(inputs) - 1):
+                for j in range(i, len(inputs)):
+                    inter = tf.tensordot(inputs[i], W, axes=(-1, 0)) * inputs[j]
+                    output.append(inter)
+
+        elif self.mode == 'each':
+            for i in range(len(inputs) - 1):
+                W = self.add_weight(
+                    shape=(embedding_size, embedding_size),
+                    initializer='glorot_uniform',
+                    regularizer=tf.keras.regularizers.l2(1e-5),
+                    trainable=True
+                )
+                for j in range(i, len(inputs)):
+                    inter = tf.tensordot(inputs[i], W, axes=(-1, 0)) * inputs[j]
+                    output.append(inter)
+
+        elif self.mode == 'interaction':
+            for i in range(len(inputs) - 1):
+                for j in range(i, len(inputs)):
+                    W = self.add_weight(
+                        shape=(embedding_size, embedding_size),
+                        initializer='glorot_uniform',
+                        regularizer=tf.keras.regularizers.l2(1e-5),
+                        trainable=True
+                    )
+                    inter = tf.tensordot(inputs[i], W, axes=(-1, 0)) * inputs[j]
+                    output.append(inter)
+
+        output = tf.concat(output, axis=1)
+        return output
+
+
+class SENet(tf.keras.Model):
+
+    def __init__(self, axis=-1, reduction=4, **kwargs):
+
+        super(SENet, self).__init__(**kwargs)
+
+        self.axis = axis
+        self.reduction = reduction
+
+    def call(self, inputs, **kwargs):
+
+        # inputs [batch_size, feats_num, embedding_size]
+        feats_num = inputs.shape[1]
+
+        weights = tf.reduce_mean(inputs, axis=self.axis, keepdims=False)     # [batch_size, feats_num]
+        W1 = self.add_weight(
+            shape=(feats_num, self.reduction),
+            trainable=True,
+            initializer='glorot_normal'
+        )
+        W2 = self.add_weight(
+            shape=(self.reduction, feats_num),
+            trainable=True,
+            initializer='glorot_normal'
+        )
+        weights = tf.keras.activations.relu(tf.tensordot(weights, W1, axes=(-1, 0)))
+        weights = tf.keras.activations.relu(tf.tensordot(weights, W2, axes=(-1, 0)))
+
+        weights = tf.expand_dims(weights, axis=-1)
+        output = tf.multiply(weights, inputs)  # [batch_size, feats_num, embedding_size]
+
+        return output
