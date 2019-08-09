@@ -14,6 +14,7 @@ from models.xDeepFM import xDeepFM
 from models.NFM import NFM
 from models.AFM import AFM
 from models.AutoInt import AutoInt
+from models.CCPM import CCPM
 from core.features import FeatureMetas
 
 if __name__ == "__main__":
@@ -33,6 +34,9 @@ if __name__ == "__main__":
 
     # Split your dataset
     train, test = train_test_split(data, test_size=0.2)
+    train_0 = train[train.click == 0]
+    train_1 = train[train.click == 1]
+    train = pd.concat([train_1, train_0[0:len(train_1)]])
     train_model_input = {name: train[name] for name in sparse_features}
     test_model_input = {name: test[name] for name in sparse_features}
 

@@ -3,25 +3,6 @@ from collections import Iterable
 import tensorflow as tf
 from tensorflow.python.keras import layers
 
-from tensorflow.python.keras.initializers import (Zeros, glorot_normal,
-                                                  glorot_uniform)
-from tensorflow.python.keras.regularizers import l2
-from tensorflow.python.keras import backend as K
-import itertools
-
-
-def get_activation(activation):
-    if activation is None:
-        return None
-    elif isinstance(activation, str):
-        act_layer = tf.keras.layers.Activation(activation)
-    elif issubclass(activation, tf.keras.layers.Layer):
-        act_layer = activation()
-    else:
-        raise ValueError(
-            "Invalid activation,found %s.You should use a str or a Activation Layer Class." % activation)
-    return act_layer
-
 
 class DNN(tf.keras.Model):
     """
@@ -153,21 +134,31 @@ class FM(tf.keras.Model):
 
 class InnerProduct(tf.keras.Model):
 
-    def __init__(self, **kwargs):
+    def __init__(self, require_logit=True, **kwargs):
 
         super(InnerProduct, self).__init__(**kwargs)
 
-    def call(self, inputs, concat=True, **kwargs):
+        self.require_logit = require_logit
 
-        inner_products_list = list()
+    def call(self, inputs, **kwargs):
 
+        rows = list()
+        cols = list()
         for i in range(len(inputs) - 1):
-            for j in range(i + 1, len(inputs)):
-                inner_products_list.append(tf.reduce_sum(tf.multiply(inputs[i], inputs[j]), axis=1, keepdims=True))
+            for j in range(i, len(inputs)):
+                rows.append(i)
+                cols.append(j)
 
-        inner_product_layer = tf.concat(inner_products_list, axis=1)
+        # [batch_size, pairs_num, embedding_size]
+        p = tf.stack([inputs[i] for i in rows], axis=1)
+        q = tf.stack([inputs[j] for j in cols], axis=1)
 
-        return inner_product_layer
+        if self.require_logit:
+            inner_product = tf.reduce_sum(p * q, axis=-1, keepdims=False)
+        else:
+            inner_product = tf.keras.layers.Flatten()(p * q)
+
+        return inner_product
 
 
 class OuterProduct(tf.keras.Model):
@@ -395,3 +386,40 @@ class AutoIntInteraction(tf.keras.Model):
         result = tf.keras.activations.relu(result)
 
         return result
+
+
+class FGCNNlayer(tf.keras.layers.Layer):
+
+    def __init__(self, filters, kernel_width, new_feat_filters, pool_width, **kwargs):
+
+        super(FGCNNlayer, self).__init__(**kwargs)
+
+        self.filters = filters
+        self.kernel_width = kernel_width
+        self.new_feat_filters = new_feat_filters
+        self.pool_width = pool_width
+
+    def call(self, inputs, **kwargs):
+
+        output = inputs
+        output = tf.keras.layers.Conv2D(
+            filters=self.filters,
+            strides=(1, 1),
+            kernel_size=(self.kernel_width, 1),
+            padding='same',
+            activation='tanh',
+            use_bias=True
+        )(output)
+        output = tf.keras.layers.MaxPooling2D(
+            pool_size=(self.pool_width, 1)
+        )(output)
+        new_feat_output = tf.keras.layers.Flatten()(output)
+        new_feat_output = tf.keras.layers.Dense(
+            units=output.shape[1] * output.shape[2] * self.new_feat_filters,
+            activation='tanh',
+            use_bias=True
+        )(new_feat_output)
+        new_feat_output = tf.reshape(new_feat_output,
+                                     shape=(-1, output.shape[1] * self.new_feat_filters, output.shape[2]))
+
+        return output, new_feat_output

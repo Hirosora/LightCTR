@@ -1,7 +1,8 @@
 import tensorflow as tf
 
-from core.features import FeatureMetas, Features, group_embedded_by_dim
+from core.features import FeatureMetas, Features
 from core.blocks import DNN, CIN
+from core.utils import group_embedded_by_dim
 
 
 def xDeepFM(
