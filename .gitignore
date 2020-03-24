@@ -1,5 +1,6 @@
 .idea
 .DS_Store
+*.py[cod]
 *.ipynb
 *ipynb*
 criteo_sample.txt
